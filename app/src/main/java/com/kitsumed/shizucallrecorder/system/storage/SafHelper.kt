@@ -22,6 +22,11 @@ import kotlin.contracts.contract
 object SafHelper {
 
     /**
+     * The character used to separate path segments in a file path.
+     */
+    const val PATH_SEPARATOR = '/'
+
+    /**
      * Holds the result of a successful [createAudioFile] call.
      *
      * @param uri         The content URI of the newly created file (e.g. content://...).
@@ -49,7 +54,7 @@ object SafHelper {
         var currentDir = rootDir
         if (!currentDir.canWrite()) return null
 
-        val pathSegments = filePath.split("/")
+        val pathSegments = filePath.split(PATH_SEPARATOR)
         val fileName = pathSegments.last()
         val directories = pathSegments.dropLast(1)
 

@@ -18,10 +18,16 @@ import com.kitsumed.shizucallrecorder.data.call.CallDirection
 import com.kitsumed.shizucallrecorder.data.call.EnrichedCallData
 import com.kitsumed.shizucallrecorder.integrations.scrcpy.ScrcpyAudioCodec
 import com.kitsumed.shizucallrecorder.services.callDetection.CallDetectionMode
+import com.kitsumed.shizucallrecorder.system.storage.SafHelper
 import java.util.Date
 import java.util.Locale
 
 object RecordingFileNameFormatter {
+    /**
+     * Sanitize file name to remove sub-folder ([SafHelper.PATH_SEPARATOR]) characters.
+     */
+    private fun sanitizeFileNamePart(value: String): String = value.replace(SafHelper.PATH_SEPARATOR, '_').trim()
+
     /**
      * Represents the supported placeholders that can be used in the file name template.
      * Binds the literal tag used in formatting to a localized description for the UI.
@@ -77,11 +83,11 @@ object RecordingFileNameFormatter {
             CallDirection.OUTGOING -> "out"
         }
 
-        val phoneStr = metadata.getBestNumber()
+        val phoneStr = sanitizeFileNamePart(metadata.getBestNumber())
         var callerNameStr = ""
 
         if (template.contains(FileNamePlaceholder.CALLER_NAME.tag) && phoneStr.isNotEmpty()) {
-            callerNameStr = metadata.callerName ?: ""
+            callerNameStr = sanitizeFileNamePart(metadata.callerName ?: "")
         }
 
         val crossCountryStr = metadata.isCrossCountry.toString()
@@ -91,7 +97,7 @@ object RecordingFileNameFormatter {
             "" // If package name is not available, return empty string.
         } else
         {
-            getAppName(context, metadata.packageName)
+            sanitizeFileNamePart(getAppName(context, metadata.packageName))
         }
 
         val baseName = template
