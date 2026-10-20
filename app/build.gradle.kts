@@ -6,23 +6,17 @@
  *  This software is distributed WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-import java.net.URI
-import java.security.MessageDigest
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.aboutlibraries)
 }
-
-val scrcpyVersion = "4.0"
-val scrcpyServerUrl = "https://github.com/Genymobile/scrcpy/releases/download/v$scrcpyVersion/scrcpy-server-v$scrcpyVersion"
-val scrcpyServerSha256 = "84924bd564a1eb6089c872c7521f968058977f91f5ff02514a8c74aff3210f3a"
-val scrcpyServerAssetName = "scrcpy-server"
-val scrcpyDownloadDir = layout.buildDirectory.dir("generated/scrcpy/assets")
-val scrcpyServerAssetFile = scrcpyDownloadDir.map { it.file(scrcpyServerAssetName) }
 val libphonenumberMetadataDir = layout.buildDirectory.dir("generated/libphonenumber/assets")
+val libphonenumberArtifact by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
 
 // Detect if we're running in a CI environment (e.g., GitHub Actions).
 val isEnvironmentGithubCI = providers.environmentVariable("GITHUB_ACTIONS").isPresent
@@ -30,77 +24,15 @@ val isEnvironmentGithubCI = providers.environmentVariable("GITHUB_ACTIONS").isPr
 // Detect if we want to bypass signing checks
 val shouldSkipSigning = providers.environmentVariable("SKIP_SIGNING").orNull?.toBoolean() ?: false
 
-abstract class DownloadAssetTask : DefaultTask() {
-    @get:Input
-    abstract val url: Property<String>
-
-    @get:Input
-    abstract val sha256: Property<String>
-
-    @get:Input
-    abstract val assetName: Property<String>
-
-    @get:OutputDirectory
-    abstract val outputDir: DirectoryProperty
-
-    @TaskAction
-    fun download() {
-        val targetFile = outputDir.get().file(assetName.get()).asFile
-
-        // Internal check to skip if already correct
-        if (targetFile.exists() && calculateSha256(targetFile).equals(sha256.get(), ignoreCase = true)) {
-            logger.info("${assetName.get()} is already up-to-date.")
-            return
-        }
-
-        targetFile.parentFile.mkdirs()
-        logger.lifecycle("Downloading ${assetName.get()}...")
-
-        URI(url.get()).toURL().openStream().use { input ->
-            targetFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-
-        val actualHash = calculateSha256(targetFile)
-        if (!actualHash.equals(sha256.get(), ignoreCase = true)) {
-            targetFile.delete()
-            throw GradleException("SHA256 mismatch! Expected ${sha256.get()} but got $actualHash")
-        }
-    }
-
-    private fun calculateSha256(file: File): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        file.inputStream().use { input ->
-            val buffer = ByteArray(8192)
-            var bytesRead = input.read(buffer)
-            while (bytesRead != -1) {
-                digest.update(buffer, 0, bytesRead)
-                bytesRead = input.read(buffer)
-            }
-        }
-        return digest.digest().joinToString("") { "%02x".format(it) }
-    }
-}
 abstract class ExtractMetadataTask : Sync() {
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 }
 
-val downloadScrcpyServer = tasks.register<DownloadAssetTask>("downloadScrcpyServer") {
-    url.set(scrcpyServerUrl)
-    sha256.set(scrcpyServerSha256)
-    assetName.set(scrcpyServerAssetName)
-    outputDir.set(scrcpyDownloadDir)
-}
-
 val extractLibphonenumberMetadata = tasks.register<ExtractMetadataTask>("extractLibphonenumberMetadata") {
-    val lib = libs.libphonenumber.get()
-    val jarFile = project.configurations
-        .detachedConfiguration(project.dependencies.create(lib))
-        .singleFile
+    val jarFiles = libphonenumberArtifact
 
-    from(zipTree(jarFile)) {
+    from(jarFiles.elements.map { files -> files.map { zipTree(it) } }) {
         include("com/google/i18n/phonenumbers/data/**")
         eachFile {
             relativePath = RelativePath(true, "phonenumber_data", name)
@@ -135,10 +67,6 @@ android {
         // Keep theses two values hard-coded here and update them per version. (To keep F-Droid compatibility since their parser is very basic)
         versionCode = 19
         versionName = "1.3.3"
-
-        buildConfigField("String", "SCRCPY_VERSION", "\"$scrcpyVersion\"")
-        buildConfigField("String", "SCRCPY_SERVER_SHA256", "\"$scrcpyServerSha256\"")
-        buildConfigField("String", "SCRCPY_SERVER_ASSET_NAME", "\"$scrcpyServerAssetName\"")
     }
     signingConfigs {
         // Signing config for CI environments.
@@ -203,11 +131,6 @@ kotlin {
 androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(
-            downloadScrcpyServer,
-            DownloadAssetTask::outputDir
-        )
-
-        variant.sources.assets?.addGeneratedSourceDirectory(
             extractLibphonenumberMetadata,
             ExtractMetadataTask::outputDir
         )
@@ -270,8 +193,16 @@ dependencies {
 
     // Libphonenumber
     implementation(libs.libphonenumber)
+    libphonenumberArtifact(libs.libphonenumber)
 
     // Shizuku
     implementation(libs.shizukuApi)
     implementation(libs.shizukuProvider)
+
+    /*
+     * Local Hidden Stubs for Android Framework (IContentProvider, etc)
+     * This is a compile-time only dependency to satisfy the compiler for hidden Android framework types.
+     * At runtime, the Android classloader prioritizes real framework classes of the OS, these stubs will not be part of the final APK.
+     */
+    compileOnly(project(":android-framework-hidden-stubs"))
 }

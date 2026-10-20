@@ -9,12 +9,19 @@
 package com.kitsumed.shizucallrecorder.services.shell
 
 import android.content.Context
+import android.media.AudioRecord
+import android.os.Binder
 import android.os.ParcelFileDescriptor
-import android.util.Log
 import androidx.annotation.Keep
 import com.kitsumed.shizucallrecorder.ILogCallback
+import com.kitsumed.shizucallrecorder.IRecordingCallback
 import com.kitsumed.shizucallrecorder.IShellService
+import com.kitsumed.shizucallrecorder.data.recording.RecordingPlan
+import com.kitsumed.shizucallrecorder.services.shell.recording.ShellRecordingEngine
+import com.kitsumed.shizucallrecorder.services.shell.utils.FakeContext
+import com.kitsumed.shizucallrecorder.services.shell.utils.ShellWorkarounds
 import com.kitsumed.shizucallrecorder.utils.AppLogger
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
 /**
@@ -28,7 +35,8 @@ import kotlin.system.exitProcess
 @Keep
 class ShellService : IShellService.Stub {
 
-    private val audioPipeline by lazy { ShellAudioPipeline() }
+    private val isInitialized = AtomicBoolean(false)
+    private val recordingEngine by lazy { ShellRecordingEngine() }
     private val commandExecutor by lazy { ShellCommandExecutor() }
 
     // ---- Shizuku-required constructors
@@ -42,45 +50,74 @@ class ShellService : IShellService.Stub {
     /**
      * Context constructor required by Shizuku v13+ for user-service instantiation.
      *
-     * @param context The fake [android.content.Context] provided by Shizuku, or null on older versions.
+     * @param context [android.content.Context] provided by Shizuku, or null on older versions.
      */
     @Keep
-    constructor(context: Context?) {
-        AppLogger.i("===============================\n" +
-             "ShellService process started!\n" +
-             "Running as UID=(${android.os.Process.myUid()})\n" +
-             "===============================")
+    constructor(context: Context?)
+    
+    /**
+     * Ensure the shell service thread is initialized. Should generally be called in every method.
+     *
+     * Note: We do not use init because we prefer to have AppLogger to be initialized as remote to send backlogs,
+     * which is impossible inside init scope
+     */
+    private fun ensureInitialized() {
+        if (isInitialized.compareAndSet(false, true)) {
+            AppLogger.d("ShellService is running its first initialization, running as UID ${android.os.Process.myUid()}")
+            ShellWorkarounds.apply()
+            AppLogger.d("Applied workarounds to replicate a valid app (shell) ActivityThread context")
+        } else {
+            AppLogger.d("ShellService already initialized")
+        }
     }
 
     // -------- IShellService AIDL implementation
 
-    override fun setLogCallback(listener: ILogCallback, isRedactionEnabled: Boolean) {
+    override fun setLogCallback(listener: ILogCallback, isRedactionEnabled: Boolean) = clearIdentity {
         AppLogger.initAsRemote(listener, isRedactionEnabled)
+        ensureInitialized() // Call after so AppLogger can send output via IPC
     }
 
     override fun startRecording(
-        audioSource: String,
-        audioCodec: String,
-        audioBitRate: Int,
-        serverPath: String,
-        isDebuggingModeEnabled: Boolean
-    ): ParcelFileDescriptor? {
-        return audioPipeline.startCapture(audioSource, audioCodec, audioBitRate, serverPath, isDebuggingModeEnabled)
+        outputFile: ParcelFileDescriptor,
+        plan: RecordingPlan,
+        callback: IRecordingCallback
+    ) = clearIdentity {
+        ensureInitialized()
+        recordingEngine.start(
+            outputFile = outputFile,
+            plan = plan,
+            callback = callback
+        )
     }
 
-    override fun stopRecording() {
-        audioPipeline.stopCapture()
+    override fun stopRecording() = clearIdentity {
+        ensureInitialized()
+        recordingEngine.stop()
     }
 
-    override fun grantAppOpByPackage(packageName: String, opName: String, userProfileId: Int): Boolean {
+    override fun pauseRecording() = clearIdentity {
+        ensureInitialized()
+        recordingEngine.pause()
+    }
+
+    override fun resumeRecording() = clearIdentity {
+        ensureInitialized()
+        recordingEngine.resume()
+    }
+
+    override fun grantAppOpByPackage(packageName: String, opName: String, userProfileId: Int): Boolean = clearIdentity {
+        ensureInitialized()
         return commandExecutor.grantAppOpByPackage(packageName, opName, userProfileId)
     }
 
-    override fun grantAppOpByUid(uid: Int, opName: String, userProfileId: Int): Boolean {
+    override fun grantAppOpByUid(uid: Int, opName: String, userProfileId: Int): Boolean = clearIdentity {
+        ensureInitialized()
         return commandExecutor.grantAppOpByUid(uid, opName, userProfileId)
     }
 
-    override fun grantRole(packageName: String, roleName: String, userProfileId: Int): Boolean {
+    override fun grantRole(packageName: String, roleName: String, userProfileId: Int): Boolean = clearIdentity {
+        ensureInitialized()
         return commandExecutor.grantRole(packageName, roleName, userProfileId)
     }
 
@@ -93,5 +130,28 @@ class ShellService : IShellService.Stub {
         AppLogger.i("ShellService.destroy() – terminating shell process")
         stopRecording()
         exitProcess(0)
+    }
+
+    /**
+     * Clears the calling identity and work source for the duration of the provided block, restoring them afterward.
+     *
+     * @param block The code block to execute with cleared identity and work source.
+     * @return The result of the block execution.
+     */
+    private inline fun <T> clearIdentity(block: () -> T): T {
+        /*
+            NOTE: This is not always needed but here to be safe. Without it, AudioRecord createRecord() log warnings
+            about mismatching UID ("createRecord uid 2000 tried to pass itself off as 10176") on AOSP, which may cause failure on other OEMs.
+            In other cases, some permission checks fully fails, for example, for the AudioPlayback workaround via AudioPolicy, createAudioRecordSink
+            checks the calling UID at a lower-level and fails.
+         */
+        val identityToken = Binder.clearCallingIdentity()
+        val workSourceToken = Binder.clearCallingWorkSource()
+        try {
+            return block()
+        } finally {
+            Binder.restoreCallingWorkSource(workSourceToken)
+            Binder.restoreCallingIdentity(identityToken)
+        }
     }
 }
