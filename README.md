@@ -39,13 +39,13 @@ The first **non-root FOSS call recorder app for Android 11+**! ShizuCallRecorder
     
 | Android Version | Supported | Note                                  |
 |-----------------|-----------|---------------------------------------|
-| 11              |**Limited**|**[Unlocked screen required](https://github.com/Genymobile/scrcpy/blob/3fcc177da5b6b4514d0e8e8d90d7d58d6731eac9/server/src/main/java/com/genymobile/scrcpy/audio/AudioDirectCapture.java#L56-L68)**, else it crash|
-| 12              | Yes       |                                      |
-| 13              | Yes       |                                      |
+| 11              |**Limited**|**[Need Unlocked Screen](https://github.com/Genymobile/scrcpy/blob/3fcc177da5b6b4514d0e8e8d90d7d58d6731eac9/server/src/main/java/com/genymobile/scrcpy/audio/AudioDirectCapture.java#L56-L68)**, ⚠️No VoIP Support|
+| 12              | **Basic** |  ⚠️No VoIP Support  (Pixel may work) |
+| 13              | **Basic** |  ⚠️No VoIP Support  (Pixel may work) |   
 | 14              | Yes       |                                      |
 | 15              | Yes       |                                      |
 | 16              | Yes       |                                      |
-| 17              |**Unknown**| Not yet released, has major ADB changes|
+| 17              | Yes       |                                      |
 
 </details>
 
