@@ -9,7 +9,6 @@
 package com.kitsumed.shizucallrecorder.services.shell
 
 import android.content.Context
-import android.media.AudioRecord
 import android.os.Binder
 import android.os.ParcelFileDescriptor
 import androidx.annotation.Keep
@@ -18,7 +17,6 @@ import com.kitsumed.shizucallrecorder.IRecordingCallback
 import com.kitsumed.shizucallrecorder.IShellService
 import com.kitsumed.shizucallrecorder.data.recording.RecordingPlan
 import com.kitsumed.shizucallrecorder.services.shell.recording.ShellRecordingEngine
-import com.kitsumed.shizucallrecorder.services.shell.utils.FakeContext
 import com.kitsumed.shizucallrecorder.services.shell.utils.ShellWorkarounds
 import com.kitsumed.shizucallrecorder.utils.AppLogger
 import java.util.concurrent.atomic.AtomicBoolean

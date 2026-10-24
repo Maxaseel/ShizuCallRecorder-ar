@@ -130,12 +130,12 @@ class ShellRecordingEngine {
                 primaryCapture!!.start()
                 secondaryCapture?.start()
 
-                encoderThread = thread(name = "ShellRecordingEngine-EncoderThread", isDaemon = false) {
+                encoderThread = thread(name = "ShellRecordingEngine-EncoderThread", isDaemon = true) {
                     Process.setThreadPriority(Process.THREAD_PRIORITY_FOREGROUND)
                     encoderLoop()
                 }
 
-                captureThread = thread(name = "ShellRecordingEngine-CaptureThread", isDaemon = false) {
+                captureThread = thread(name = "ShellRecordingEngine-CaptureThread", isDaemon = true) {
                     // Set thread priority to reduce logging "RecordThread: buffer overflow" and audio glitches.
                     Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
                     captureLoop()
