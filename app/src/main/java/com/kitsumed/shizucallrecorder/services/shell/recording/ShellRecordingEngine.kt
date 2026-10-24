@@ -58,6 +58,17 @@ class ShellRecordingEngine {
 
     private var captureThread: Thread? = null
     private var encoderThread: Thread? = null
+    /**
+     * Shutdown hook to finalize the recording session if the shell process exits unexpectedly.
+     * Prevents leaving a corrupted recording file.
+     */
+    private val shutdownHookThread = Thread({
+        if (recordingActive.get()) {
+            AppLogger.w("Shell process died unexpectedly with an active recording session. Finalizing recording...")
+            stop()
+        }
+    }, "ShellRecordingEngine-ShutdownHook")
+
     private var encoder: AudioEncoder? = null
 
     private var recordingCallback: IRecordingCallback? = null
@@ -140,6 +151,9 @@ class ShellRecordingEngine {
                     Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
                     captureLoop()
                 }
+
+                // Register the shutdown hook to finalize the recording session if the shell process exits unexpectedly.
+                attachShutdownHook()
 
                 AppLogger.i("Native audio capture started.")
             } catch (e: Throwable) { // Catch ALL (include low-level exceptions) that may occur.
@@ -415,9 +429,30 @@ class ShellRecordingEngine {
             outputFile = null
             recordingCallback = null
             recordingPaused.set(false)
+            detachShutdownHook()
 
             AppLogger.i("Native recording session stopped.")
         }
+    }
+
+    /**
+     * Register [shutdownHookThread] from the current VM/process.
+     */
+    private fun attachShutdownHook() {
+        runCatching {
+            Runtime.getRuntime().addShutdownHook(shutdownHookThread)
+        }.onFailure {
+            AppLogger.w("Failed to attach the recording shutdown hook. An unexpected process death may leave a corrupted file.", it)
+        }
+    }
+
+    /**
+     * Unregister [shutdownHookThread] from the current VM/process.
+     *
+     * @returns true if the hook was previously registered and is now successfully removed, false otherwise, including for errors.
+     */
+    private fun detachShutdownHook(): Boolean {
+        return runCatching { Runtime.getRuntime().removeShutdownHook(shutdownHookThread) }.getOrDefault(false)
     }
 
     /**
