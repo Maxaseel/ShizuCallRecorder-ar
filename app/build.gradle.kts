@@ -13,7 +13,7 @@ plugins {
     alias(libs.plugins.aboutlibraries)
 }
 val libphonenumberMetadataDir = layout.buildDirectory.dir("generated/libphonenumber/assets")
-val libphonenumberArtifact by configurations.creating {
+val libphonenumberArtifact = configurations.create("libphonenumberArtifact") {
     isCanBeConsumed = false
     isCanBeResolved = true
 }

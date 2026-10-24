@@ -60,7 +60,7 @@ jobs:
         with:
           validate-wrappers: true
           cache-provider: basic
-          gradle-version: '9.4.1'
+          gradle-version: '9.8.2'
           # MUST BE READ ONLY TO PREVENT CACHE POISONING
           cache-read-only: true
       
