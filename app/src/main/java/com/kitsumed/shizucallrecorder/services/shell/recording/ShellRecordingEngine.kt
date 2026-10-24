@@ -64,7 +64,8 @@ class ShellRecordingEngine {
      */
     private val shutdownHookThread = Thread({
         if (recordingActive.get()) {
-            AppLogger.w("Shell process died unexpectedly with an active recording session. Finalizing recording...")
+            // This lambda caller cannot be resolved from the stack trace on release builds.
+            AppLogger.w("SCR:ShellRecordingEngine", "Shell process died unexpectedly with an active recording session. Finalizing recording...")
             stop()
         }
     }, "ShellRecordingEngine-ShutdownHook")

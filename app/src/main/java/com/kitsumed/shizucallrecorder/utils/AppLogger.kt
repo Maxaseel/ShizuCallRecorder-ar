@@ -17,8 +17,6 @@ import com.kitsumed.shizucallrecorder.BuildConfig
 import com.kitsumed.shizucallrecorder.ILogCallback
 import com.kitsumed.shizucallrecorder.data.AppPreferences
 import com.kitsumed.shizucallrecorder.system.permissions.AppPermission
-import com.kitsumed.shizucallrecorder.utils.AppLogger.init
-import com.kitsumed.shizucallrecorder.utils.AppLogger.initAsRemote
 import com.kitsumed.shizucallrecorder.utils.AppLogger.redact
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -139,8 +137,7 @@ object AppLogger {
                 return formatTag(formatClassName(className))
             }
         }
-
-        return "UnknownClassName" // Fallback if no  caller is found
+        return "SCR:UnknownClassName" // Fallback if no caller is found. Generally happen with lambda or anonymous classes due to R8.
     }
 
     /**
