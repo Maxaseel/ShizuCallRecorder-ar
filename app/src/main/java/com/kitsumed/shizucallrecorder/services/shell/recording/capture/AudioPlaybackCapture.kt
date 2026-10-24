@@ -82,10 +82,10 @@ class AudioPlaybackCapture(override val plan: CapturePlan.AudioPlayback) : IAudi
      * Inspired by the "Playback Capture" API introduced in Android 10, but uses the lower-level hidden API
      * to bypass the restrictions and permissions requirement applied when using the public "Playback Capture" API.
      *
-     * AudioMixingRule source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/audiopolicy/AudioMixingRule.java
-     * AudioMix source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/audiopolicy/AudioMix.java
-     * AudioPolicy source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/audiopolicy/AudioPolicy.java
-     * AudioManager source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/AudioManager.java
+     * AudioMixingRule source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/audiopolicy/AudioMixingRule.java
+     * AudioMix source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/audiopolicy/AudioMix.java
+     * AudioPolicy source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/audiopolicy/AudioPolicy.java
+     * AudioManager source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/AudioManager.java
      *
      * @throws Throwable Thrown at any point if something fail.
      */

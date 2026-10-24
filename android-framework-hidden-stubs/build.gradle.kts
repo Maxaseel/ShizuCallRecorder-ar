@@ -10,5 +10,5 @@ java {
 android {
     namespace = "com.kitsumed.shizucallrecorder.hidden_api_stubs"
     // Make this match our app module one
-    compileSdk = 36
+    compileSdk = 37
 }

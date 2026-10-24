@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
  * To ensure in future Android releases that they did not change this logic, we must check InCallController source code.
  * Android 11 (no AppOps, impossible to use): https://cs.android.com/android/platform/superproject/+/android11-release:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=1476-1486
  * Android 12 (works) : https://cs.android.com/android/platform/superproject/+/android12-release:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=1818-1829
- * Android 16 (works) : https://cs.android.com/android/platform/superproject/+/android-16.0.0_r4:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=2679-2691
+ * Android 17 (works) : https://cs.android.com/android/platform/superproject/+/android-17.0.0_r1:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=2797-2809
  *
  * We can also quickly check that we are binding as NON_UI by running with adb "adb shell telecom is-non-ui-in-call-service-bound com.kitsumed.shizucallrecorder" while a call is ongoing.
  * For more detailed information, look at kitsumed comment: https://github.com/kitsumed/ShizuCallRecorder/issues/4#issuecomment-4524107187

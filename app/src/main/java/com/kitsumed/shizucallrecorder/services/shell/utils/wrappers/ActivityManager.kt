@@ -26,21 +26,21 @@ import java.lang.reflect.Method
 
 /**
  * A wrapper for Android system-level ActivityManageService.
- * Source : https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
+ * Source : https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java
  */
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
 object ActivityManager {
 
     /**
      * Get the system ActivityManagerService (implements IActivityManager) via reflection.
-     * Source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/core/java/android/app/IActivityManager.aidl
+     * Source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/core/java/android/app/IActivityManager.aidl
      */
     private val manager: IInterface by lazy {
         ServiceManager.getService(Context.ACTIVITY_SERVICE, "android.app.IActivityManager")
     }
 
     /**
-     * Source Android 16: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=7085-7094
+     * Source Android 17: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=7852-7861
      * Source Android 11: https://cs.android.com/android/platform/superproject/+/android11-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=7598-7606
      * Note: scrcpy has two method since older android versions had a different signature, but we only support Android11+.
      */
@@ -63,7 +63,7 @@ object ActivityManager {
     fun getContentProviderExternal(name: String?, token: IBinder): IContentProvider? {
         return try {
             // ActivityManagerService.getContentProviderExternal(name, userId, token, tag) return a ContentProviderHolder object.
-            // Source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/core/java/android/app/ContentProviderHolder.java
+            // Source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/core/java/android/app/ContentProviderHolder.java
             val providerHolder = getContentProviderExternalMethod.invoke(
                 manager,
                 name,
@@ -83,7 +83,7 @@ object ActivityManager {
     }
 
     /**
-     * Source Android 16: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=3254-3262
+     * Source Android 17: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=3848-3857
      * Note: scrcpy use the deprecated startActivityAsUser because it supports older android versions, but we only support Android11+.
      */
     private val getStartActivityAsUserWithFeatureMethod: Method by lazy {
@@ -136,7 +136,7 @@ object ActivityManager {
     }
 
     /**
-     * Source Android 16: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=3805-3808
+     * Source Android 17: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/services/core/java/com/android/server/am/ActivityManagerService.java;l=4467-4471
      */
     private val forceStopPackageMethod: Method by lazy {
         manager.javaClass.getMethod(

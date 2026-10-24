@@ -79,7 +79,7 @@
             android:exported="true"
             tools:targetApi="31">
             <!-- Tell the InCallController that we are not creating any custom UI (false) -->
-            <!-- Android 16 Ex: https://cs.android.com/android/platform/superproject/+/android16-release:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=2531-2533 -->
+            <!-- Android 17 Ex: https://cs.android.com/android/platform/superproject/+/android17-release:packages/services/Telecomm/src/com/android/server/telecom/InCallController.java;l=2753-2755 -->
             <meta-data android:name="android.telecom.IN_CALL_SERVICE_UI" android:value="false" />
             <!-- Tell the InCallController that we want to receive self-managed calls, theses are third-party app like WhatsApps-->
             <meta-data android:name="android.telecom.INCLUDE_SELF_MANAGED_CALLS" android:value="true" />

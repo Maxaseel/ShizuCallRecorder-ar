@@ -89,6 +89,10 @@ import androidx.core.net.toUri
 import com.kitsumed.shizucallrecorder.data.recording.CapturePlan
 import com.kitsumed.shizucallrecorder.data.recording.RecordingCodec
 import com.kitsumed.shizucallrecorder.data.recording.RecordingSource
+import com.mikepenz.aboutlibraries.ui.compose.style.LibraryActionBadges
+import com.mikepenz.aboutlibraries.ui.compose.variant.LibrariesVariant
+import com.mikepenz.aboutlibraries.ui.compose.variant.LibraryActionMode
+import com.mikepenz.aboutlibraries.ui.compose.variant.LibraryBadges
 
 /**
  * Stateful wrapper for the Settings screen that connects [SettingsViewModel] to [SettingsContent].
@@ -302,10 +306,14 @@ private fun AboutSection(versionString: String) {
                     )
 
                     val libraries by produceLibraries(R.raw.aboutlibraries)
-                    LibrariesContainer(libraries,Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                        showAuthor = true, showLicenseBadges = true, showFundingBadges = false, showVersion = true, showDescription = true)
+                    LibrariesContainer(libraries,
+                        Modifier
+                            .fillMaxSize()
+                            .weight(1f),
+                        variant = LibrariesVariant.Refined,
+                        badges = LibraryBadges(version = true, license = true, author = true, description = true, funding = false),
+                        actionMode = LibraryActionMode.Chips
+                    )
                     TextButton(
                         onClick = { showLicensesDialog = false },
                         modifier = Modifier

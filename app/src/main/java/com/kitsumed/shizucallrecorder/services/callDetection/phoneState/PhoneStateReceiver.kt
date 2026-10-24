@@ -31,7 +31,7 @@ import com.kitsumed.shizucallrecorder.utils.AppLogger
  * do call log polling (meaning whe will need to wait for the call to end, then query the latest phone number from the call log). This is not ideal, prone to race conditions. The other, preferred alternative
  * would be to use Shizuku and call a hidden api to get that data, but I'm unsure now, will make an issue.
  * For every new Android releases, we must ensure they still send the EXTRA here:
- * Android 16: https://cs.android.com/android/platform/superproject/+/android-16.0.0_r4:frameworks/base/services/core/java/com/android/server/TelephonyRegistry.java;l=4349-4351
+ * Android 17: https://cs.android.com/android/platform/superproject/+/android-17.0.0_r1:frameworks/base/services/core/java/com/android/server/TelephonyRegistry.java;l=4588-4590
  * Android 11: https://cs.android.com/android/platform/superproject/+/android-11.0.0_r40:frameworks/base/services/core/java/com/android/server/TelephonyRegistry.java;l=2566-2568
  */
 class PhoneStateReceiver : BroadcastReceiver() {

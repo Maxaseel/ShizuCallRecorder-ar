@@ -20,6 +20,7 @@ import android.content.AttributionSource
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.media.AudioAttributes
+import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -175,8 +176,8 @@ object ShellWorkarounds {
      * Certain OEMs (notably Vivo) modify the standard public [AudioRecord] constructor and add code that in our case may throw errors during init.
      * We try to work around this by using the private constructor at a lower-level and configure it ourselves.
      *
-     * This is the private constructor we replicateL
-     * Source Android 16: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/AudioRecord.java;l=375-493
+     * This is the private constructor we replicate:
+     * Source Android 17: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/AudioRecord.java;l=367-491
      */
     @SuppressLint("PrivateApi", "SoonBlockedPrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
     fun createAudioRecordViaReflection(
@@ -185,7 +186,7 @@ object ShellWorkarounds {
 
         // We invoke an alternate private constructor `AudioRecord(long nativeRecordInJavaObj)` to create an empty `AudioRecord` UNINITIALIZED instance.
         // This is a quick hack so we don't use Unsafe and need more complex implementations.
-        // Source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/AudioRecord.java;l=495-512
+        // Source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/AudioRecord.java;l=493-510
         try {
             val audioRecordClass = AudioRecord::class.java
             // AudioRecord audioRecord = new AudioRecord(0L);  --> This create an empty AudioRecord instance of STATE_UNINITIALIZED.
@@ -204,7 +205,7 @@ object ShellWorkarounds {
 
 
             //---- Configure AudioAttribute & its privacy config ----
-            // AudioAttribute.Builder Source Android 16: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/media/java/android/media/AudioAttributes.java;l=759-1340
+            // AudioAttribute.Builder Source Android 17: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/AudioAttributes.java;l=807-1404
             val audioAttributesBuilder = AudioAttributes.Builder()
             // audioAttributesBuilder.setInternalCapturePreset(source)
             val setInternalCapturePresetMethod = AudioAttributes.Builder::class.java.getMethod("setInternalCapturePreset", Int::class.javaPrimitiveType)
@@ -240,20 +241,33 @@ object ShellWorkarounds {
 
 
             //---- Configure Channels & Buffer Size ----
-            // audioRecord.mChannelCount = channels
-            val mChannelCountField = audioRecordClass.getDeclaredField("mChannelCount").apply { isAccessible = true }
-            mChannelCountField.set(audioRecord, channels)
+            val channelMasksInstance = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.BAKLAVA) { // API 30 (Android 11+) to Android 16
+                // audioRecord.mChannelCount = channels
+                val mChannelCountField = audioRecordClass.getDeclaredField("mChannelCount").apply { isAccessible = true }
+                mChannelCountField.set(audioRecord, channels)
 
-            // audioRecord.mChannelMask = channelMask
-            val mChannelMaskField = audioRecordClass.getDeclaredField("mChannelMask").apply { isAccessible = true }
-            mChannelMaskField.set(audioRecord, channelMask)
+                // audioRecord.mChannelMask = channelMask
+                val mChannelMaskField = audioRecordClass.getDeclaredField("mChannelMask").apply { isAccessible = true }
+                mChannelMaskField.set(audioRecord, channelMask)
+                null
+            } else { // API 37+ (Android 17+)
+                // Android 17 uses AudioFormat.ChannelMasks instead of raw integer channel masks. mChannelCount and mChannelMask no longer exists.
+                val channelMasksClass = Class.forName($$"android.media.AudioFormat$ChannelMasks")
+                val channelMasksConstructor = channelMasksClass.getDeclaredConstructor(Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType).apply { isAccessible = true }
+                // AudioFormat.ChannelMasks channelMasksObj = new AudioFormat.ChannelMasks(channelMask, 0, 0);
+                val channelMasksInstance = channelMasksConstructor.newInstance(channelMask, AudioFormat.CHANNEL_INVALID, AudioFormat.CHANNEL_INVALID)
+                // audioRecord.mChannelMasks = channelMasksInstance
+                val mChannelMaskField = audioRecordClass.getDeclaredField("mChannelMask").apply { isAccessible = true }
+                mChannelMaskField.set(audioRecord, channelMasksInstance)
+
+                channelMasksInstance
+            }
 
             val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, encoding)
             val bufferSizeInBytes = minBufferSize * 8
             // audioRecord.audioBuffSizeCheck(bufferSizeInBytes)
             val audioBuffSizeCheckMethod = audioRecordClass.getDeclaredMethod("audioBuffSizeCheck", Int::class.javaPrimitiveType).apply { isAccessible = true }
             audioBuffSizeCheckMethod.invoke(audioRecord, bufferSizeInBytes)
-
 
             //---- Execute C++ native_setup ----
             // Create a new native C++ AudioRecord instance to interact with AudioFlinger, we bind it to our java instance.
@@ -263,11 +277,6 @@ object ShellWorkarounds {
 
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) { // API 30 (Android 11)
                 // Source: https://cs.android.com/android/platform/superproject/+/android11-release:frameworks/base/media/java/android/media/AudioRecord.java;l=1990-1995
-                // private native final int native_setup(Object audiorecord_this,
-                // Object /*AudioAttributes*/ attributes,
-                // int[] sampleRate, int channelMask, int channelIndexMask, int audioFormat,
-                // int buffSizeInBytes, int[] sessionId, String opPackageName,
-                // long nativeRecordInJavaObj);
                 val nativeSetupMethod = audioRecordClass.getDeclaredMethod(
                     "native_setup", Any::class.java, Any::class.java, IntArray::class.java,
                     Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType,
@@ -290,13 +299,8 @@ object ShellWorkarounds {
                     val getParcelMethod = attributionSourceState.javaClass.getDeclaredMethod("getParcel")
                     val attributionSourceParcel = getParcelMethod.invoke(attributionSourceState) as Parcel
 
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 31-33 (Android 12-13)
+                    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU) { // API 31-33 (Android 12-13)
                         // Source: https://cs.android.com/android/platform/superproject/+/android12-release:frameworks/base/media/java/android/media/AudioRecord.java;l=2246-2250
-                        // private native int native_setup(Object audiorecordThis,
-                        // Object /*AudioAttributes*/ attributes,
-                        // int[] sampleRate, int channelMask, int channelIndexMask, int audioFormat,
-                        // int buffSizeInBytes, int[] sessionId, @NonNull Parcel attributionSource,
-                        // long nativeRecordInJavaObj, int maxSharedAudioHistoryMs);
                         val nativeSetupMethod = audioRecordClass.getDeclaredMethod(
                             "native_setup", Any::class.java, Any::class.java, IntArray::class.java,
                             Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType,
@@ -309,8 +313,7 @@ object ShellWorkarounds {
                             channelMask, 0, audioRecord.audioFormat, bufferSizeInBytes, session,
                             attributionSourceParcel, 0L, 0
                         ) as Int
-                    } else { // API 34+ (Android 14 and above)
-                        // Added a new int parameter "halInputFlags"
+                    } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.BAKLAVA) { // API 34-36 (Android 14-16)
                         // Source: https://cs.android.com/android/platform/superproject/+/android14-release:frameworks/base/media/java/android/media/AudioRecord.java;l=2461-2465
                         val nativeSetupMethod = audioRecordClass.getDeclaredMethod(
                             "native_setup", Any::class.java, Any::class.java, IntArray::class.java,
@@ -322,6 +325,20 @@ object ShellWorkarounds {
                         initResult = nativeSetupMethod.invoke(
                             audioRecord, WeakReference(audioRecord), attributes, sampleRateArray,
                             channelMask, 0, audioRecord.audioFormat, bufferSizeInBytes, session,
+                            attributionSourceParcel, 0L, 0, 0
+                        ) as Int
+                    } else { // API 37 (Android 17+)
+                        // https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/media/java/android/media/AudioRecord.java;l=2504-2508
+                        val nativeSetupMethod = audioRecordClass.getDeclaredMethod(
+                            "native_setup",
+                            Any::class.java, Any::class.java, IntArray::class.java, channelMasksInstance!!.javaClass,
+                            Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, IntArray::class.java, Parcel::class.java,
+                            Long::class.javaPrimitiveType, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType
+                        ).apply { isAccessible = true }
+
+                        initResult = nativeSetupMethod.invoke(
+                            audioRecord, WeakReference(audioRecord), attributes, sampleRateArray,
+                            channelMasksInstance, 0, audioRecord.audioFormat, bufferSizeInBytes, session,
                             attributionSourceParcel, 0L, 0, 0
                         ) as Int
                     }

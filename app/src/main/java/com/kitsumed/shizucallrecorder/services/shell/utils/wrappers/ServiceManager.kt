@@ -24,7 +24,7 @@ import java.lang.reflect.Method
 object ServiceManager {
 
     // Reflection-based method to access the hidden ServiceManager.getService(String) method.
-    // Source: https://cs.android.com/android/platform/superproject/+/android16-release:frameworks/base/core/java/android/os/ServiceManager.java;l=160-181
+    // Source: https://cs.android.com/android/platform/superproject/+/android17-release:frameworks/base/core/java/android/os/ServiceManager.java;l=141-162
     @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
     private val getServiceMethod: Method = try {
         val serviceManagerClass = Class.forName("android.os.ServiceManager")
