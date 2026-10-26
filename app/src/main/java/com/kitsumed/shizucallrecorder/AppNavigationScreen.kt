@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kitsumed.shizucallrecorder.data.AppPreferences
 import com.kitsumed.shizucallrecorder.onboarding.OnboardingStatus
+import com.kitsumed.shizucallrecorder.ui.screens.HomeScreen
 import com.kitsumed.shizucallrecorder.ui.screens.DisclaimerScreen
 import com.kitsumed.shizucallrecorder.ui.screens.PermissionsScreen
 import com.kitsumed.shizucallrecorder.ui.screens.SettingsScreen
@@ -159,9 +160,9 @@ fun AppNavigationScreen() {
                             showSponsorScreen = false // Trigger recompose
                         })
                     } else {
-                        SettingsScreen(
-                            viewModel = settingsViewModel
-                        )
+                        HomeScreen(preferences = preferences, updateTrigger = settingsViewModelUpdateTrigger) {
+                            SettingsScreen(viewModel = settingsViewModel)
+                        }
                     }
                 }
             }
