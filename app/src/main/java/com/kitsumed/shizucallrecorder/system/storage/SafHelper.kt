@@ -11,6 +11,7 @@ package com.kitsumed.shizucallrecorder.system.storage
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import java.io.File
 import androidx.documentfile.provider.DocumentFile
 import com.kitsumed.shizucallrecorder.system.storage.SafHelper.createAudioFile
 import kotlin.contracts.ExperimentalContracts
@@ -49,7 +50,15 @@ object SafHelper {
      * @param mimeType   The MIME type of the file (e.g. "audio/webm" for Opus, "audio/mp4" for AAC).
      * @return A [SafResult] with the URI, open FD, and display name; or null on failure.
      */
-    fun createAudioFile(context: Context, folderUri: Uri, filePath: String, mimeType: String): SafResult? {
+    fun createAudioFile(context: Context, folderUri: Uri?, filePath: String, mimeType: String): SafResult? {
+        if (folderUri == null) {
+            val root = File(context.getExternalFilesDir(null), "CallRecordings")
+            if (!root.exists() && !root.mkdirs()) return null
+            val target = File(root, filePath)
+            if (!target.parentFile?.exists()!! && !target.parentFile!!.mkdirs()) return null
+            val pfd = ParcelFileDescriptor.open(target, ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_TRUNCATE)
+            return SafResult(Uri.fromFile(target), pfd, "CallRecordings/${filePath.trimStart('/')}" )
+        }
         val rootDir = DocumentFile.fromTreeUri(context, folderUri) ?: return null
         var currentDir = rootDir
         if (!currentDir.canWrite()) return null
@@ -91,7 +100,10 @@ object SafHelper {
         contract {
             returns(true) implies (folderUri != null)
         }
-        if (folderUri == null) return false
+        if (folderUri == null) {
+            val directory = File(context.getExternalFilesDir(null), "CallRecordings")
+            return (directory.exists() || directory.mkdirs()) && directory.isDirectory && directory.canWrite()
+        }
         val directory = DocumentFile.fromTreeUri(context, folderUri)
         return directory != null && directory.exists() && directory.canWrite()
     }
@@ -105,7 +117,7 @@ object SafHelper {
      * @return The folder name (e.g. "Recordings"), or null.
      */
     fun getFolderDisplayNameOrNull(context: Context, folderUri: Uri?): String? {
-        if (folderUri == null) return null
+        if (folderUri == null) return "CallRecordings"
         val directory = DocumentFile.fromTreeUri(context, folderUri)
         return directory?.name
     }
