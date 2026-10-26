@@ -99,7 +99,7 @@ private fun RecordingsScreen(preferences: AppPreferences, updateTrigger: Int) {
         }
         files
     }
-    val favorites = remember(refresh) { localPrefs.getStringSet("favorites", emptySet()).orEmpty() }
+    val favorites = remember(refresh) { localPrefs.getStringSet("favorites", mutableSetOf()).orEmpty() }
     val visible = recordings.filter { (!favoriteOnly || it.uri.toString() in favorites) && (query.isBlank() || it.name.contains(query, true)) }
     val ordered = remember(visible, sort, ascending) {
         val sorted = when (sort) {
@@ -151,7 +151,7 @@ private fun RecordingsScreen(preferences: AppPreferences, updateTrigger: Int) {
                                 Text(formatDuration(item.duration), style = MaterialTheme.typography.labelSmall)
                                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Default.MoreVert, "خيارات التسجيل") }
                                 DropdownMenu(menuOpen, { menuOpen = false }) {
-                                    DropdownMenuItem(text = { Text(if (item.uri.toString() in favorites) "إزالة من المفضلة" else "إضافة إلى المفضلة") }, onClick = { val set = localPrefs.getStringSet("favorites", emptySet()).orEmpty().toMutableSet(); if (!set.add(item.uri.toString())) set.remove(item.uri.toString()); localPrefs.edit().putStringSet("favorites", set).apply(); refresh++; menuOpen = false })
+                                    DropdownMenuItem(text = { Text(if (item.uri.toString() in favorites) "إزالة من المفضلة" else "إضافة إلى المفضلة") }, onClick = { val set = localPrefs.getStringSet("favorites", mutableSetOf()).orEmpty().toMutableSet(); if (!set.add(item.uri.toString())) set.remove(item.uri.toString()); localPrefs.edit().putStringSet("favorites", set).apply(); refresh++; menuOpen = false })
                                     DropdownMenuItem(text = { Text("إضافة / تعديل ملاحظة") }, onClick = { noteItem = item; noteText = localPrefs.getString("note:${item.uri}", "").orEmpty(); menuOpen = false })
                                     DropdownMenuItem(text = { Text("إعادة تسمية") }, onClick = { renameItem = item; renameText = item.name.substringBeforeLast('.'); menuOpen = false })
                                     DropdownMenuItem(text = { Text("مشاركة") }, onClick = { runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("audio/*").putExtra(Intent.EXTRA_STREAM, item.uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "مشاركة التسجيل")) }; menuOpen = false })
